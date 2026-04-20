@@ -1,0 +1,125 @@
+{
+  "name": "CrewAI Ollama Content Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "cron-generate-content",
+      "name": "Cron",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8090/api/v1/content/generate/queue",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"useTopicQueue\": true,\n  \"saveResult\": true,\n  \"markTopicProcessed\": true,\n  \"includeDebug\": false,\n  \"audience\": \"LinkedIn and business readers\",\n  \"tone\": \"Professional, insightful, and useful\"\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "http-call-crewai-api",
+      "name": "Call CrewAI API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "={{ $json.topic }}",
+              "type": "string"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "content",
+              "name": "content",
+              "value": "={{ $json.final_content }}",
+              "type": "string"
+            },
+            {
+              "id": "hashtags",
+              "name": "hashtags",
+              "value": "={{ ($json.hashtags || []).join(' ') }}",
+              "type": "string"
+            },
+            {
+              "id": "request_id",
+              "name": "request_id",
+              "value": "={{ $json.request_id }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-final-payload",
+      "name": "Prepare Final Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Call CrewAI API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call CrewAI API": {
+      "main": [
+        [
+          {
+            "node": "Prepare Final Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "crewai-ollama-content-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}
+
