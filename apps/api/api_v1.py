@@ -37,9 +37,13 @@ def health_check(request):
         "mongo_configured": repository.enabled,
     }
 
+import time
+from .models import GenerationHistory
+
 @api.post("/content/generate", response=ContentGenerationResponse)
 def generate_content(request, payload: ContentGenerationRequest):
     request_id = str(uuid4())
+    start_time = time.time()
     logger.info(f"[{request_id}] Received generation request: topic='{payload.topic}', crew='{payload.crew_type}'")
     
     resolved_topic = _resolve_topic(payload)
@@ -48,12 +52,25 @@ def generate_content(request, payload: ContentGenerationRequest):
     research_bundle = research_collector.build_bundle(payload, resolved_topic)
     logger.info(f"[{request_id}] Research bundle built with {research_bundle.source_count} sources.")
 
+    error_msg = None
+    crew_result = None
     try:
         logger.info(f"[{request_id}] Starting CrewAI execution...")
         crew_result = crew_service.run(payload, research_bundle)
         logger.info(f"[{request_id}] CrewAI execution completed successfully.")
     except Exception as exc:
+        error_msg = str(exc)
         logger.error(f"[{request_id}] CrewAI execution failed: {exc}", exc_info=True)
+        # Create history record for the failure
+        GenerationHistory.objects.create(
+            request_id=request_id,
+            topic=resolved_topic.topic,
+            crew_type=payload.crew_type,
+            status="failed",
+            error_message=error_msg,
+            llm_provider=settings.LLM_PROVIDER,
+            llm_model=settings.LLM_MODEL or "default"
+        )
         return api.create_response(request, {"detail": f"CrewAI execution failed: {exc}"}, status=502)
 
     parsed = crew_result.parsed_output
@@ -64,6 +81,22 @@ def generate_content(request, payload: ContentGenerationRequest):
     keywords = list(parsed.get("keywords", [])) or payload.keywords
     image_prompt = str(parsed.get("image_prompt", "")).strip()
 
+    # Save to internal Django History (SQLite)
+    execution_time = time.time() - start_time
+    GenerationHistory.objects.create(
+        request_id=request_id,
+        topic=resolved_topic.topic,
+        crew_type=payload.crew_type,
+        title=title,
+        summary=summary,
+        content=final_content,
+        status="success",
+        llm_provider=settings.LLM_PROVIDER,
+        llm_model=settings.LLM_MODEL or "default",
+        execution_time_seconds=round(execution_time, 2)
+    )
+
+    # Legacy MongoDB Save Logic
     output_collection_id = None
     should_save = (
         payload.save_result
