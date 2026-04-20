@@ -95,3 +95,38 @@ class FinanceCrew(BaseCrew):
 ## 📊 6. Observability
 
 Use `docker compose logs -f` to track every step of the agent's workflow. Every request is tagged with a unique **ID** (e.g., `[92164c64]`) that you can find in the Django Admin for audit later.
+
+---
+
+## ⚡ 7. Parallel vs. Serial Execution (High Performance)
+
+For complex multi-agent teams, you want to optimize for time. By default, agents work one-by-one (Serial). You can make them work simultaneously (Parallel) to save time.
+
+### ✅ Serial Mode (Sequential)
+- **Best for**: Pipelines (e.g., Worker A $\rightarrow$ Worker B $\rightarrow$ Worker C).
+- **Setup**: Just add tasks to the list. They will run in order.
+
+### ✅ Parallel Mode (Simultaneous)
+- **Best for**: Data gathering from multiple sources at once.
+- **Setup**: In your `Task` definition, set `async_execution=True`.
+
+### 🧩 The "Mixed" Workflow (Industry Standard)
+This is the most powerful pattern: **Gather in Parallel, Summarize in Serial.**
+
+| Task | Mode | Tool | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Task 1: Market** | Parallel | `async_execution=True` | Fetch prices fast. |
+| **Task 2: Sentiment**| Parallel | `async_execution=True` | Fetch social data fast. |
+| **Task 3: Synthesis**| **Serial** | `context=[T1, T2]` | **Wait** for T1 & T2, then merge. |
+
+**Code Snippet:**
+```python
+# Task 1 & 2 run at the SAME TIME
+t1 = Task(..., async_execution=True)
+t2 = Task(..., async_execution=True)
+
+# Task 3 WAITS for both and combines the results
+t3 = Task(..., context=[t1, t2])
+```
+
+Check the reference file: **`apps/agents/crewai/crews/mixed_workflow_crew.py`** for a full implementation.

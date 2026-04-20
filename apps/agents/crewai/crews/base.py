@@ -11,10 +11,11 @@ class BaseCrew(ABC):
     Abstract base class for all Agentic Crews.
     Provides shared LLM initialization and execution logic.
     """
-    def __init__(self, service_settings=None) -> None:
+    def __init__(self, service_settings=None, process_type: Process = Process.sequential) -> None:
         # service_settings is kept for backward compat if called from legacy paths
         self.llm = self._build_llm()
         self.config_dir = Path(__file__).resolve().parent.parent / "config"
+        self.process_type = process_type
 
     def _load_config(self, filename: str) -> dict[str, Any]:
         """Loads a YAML configuration file from the config directory."""
@@ -42,7 +43,7 @@ class BaseCrew(ABC):
         crew = Crew(
             agents=agents,
             tasks=tasks,
-            process=Process.sequential,
+            process=self.process_type,
             verbose=False,
         )
         return crew.kickoff()
