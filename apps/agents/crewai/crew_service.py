@@ -1,8 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from .parser import parse_final_output
-from .schemas import ContentGenerationRequest, ResearchBundle
-from .settings import ServiceSettings
+from api.schemas import ContentGenerationRequest, ResearchBundle
 from .crews.registry import get_crew_class
 
 @dataclass
@@ -16,8 +15,8 @@ class ContentCrewService:
     """
     Generic orchestration service that dispatches requests to specialized Crews.
     """
-    def __init__(self, settings: ServiceSettings) -> None:
-        self.settings = settings
+    def __init__(self, service_settings=None) -> None:
+        self.settings = service_settings
 
     def run(
         self,

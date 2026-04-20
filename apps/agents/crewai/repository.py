@@ -1,33 +1,30 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import Any
-
 from bson import ObjectId
 from pymongo import MongoClient
+from django.conf import settings
 
-from .schemas import ResolvedTopic
-from .settings import ServiceSettings
+from api.schemas import ResolvedTopic
 
 
 class TopicRepository:
-    def __init__(self, settings: ServiceSettings) -> None:
-        self.settings = settings
+    def __init__(self, service_settings=None) -> None:
+        self.settings = service_settings or settings
         self._client: MongoClient | None = None
 
     @property
     def enabled(self) -> bool:
-        return bool(self.settings.mongo_uri and self.settings.mongo_db_name)
+        return bool(getattr(self.settings, "MONGO_URI", None) and getattr(self.settings, "MONGO_DB_NAME", None))
 
     def _get_collection(self, collection_name: str):
         if not self.enabled:
             raise RuntimeError("MongoDB is not configured for this service.")
         if self._client is None:
-            self._client = MongoClient(self.settings.mongo_uri)
-        return self._client[self.settings.mongo_db_name][collection_name]
+            self._client = MongoClient(self.settings.MONGO_URI)
+        return self._client[self.settings.MONGO_DB_NAME][collection_name]
 
     def fetch_next_topic(self) -> ResolvedTopic | None:
-        collection = self._get_collection(self.settings.mongo_topics_collection)
+        collection = self._get_collection(getattr(self.settings, "MONGO_TOPICS_COLLECTION", "topics"))
         query = {
             "$or": [
                 {"status": {"$ne": "processed"}},
@@ -38,7 +35,7 @@ class TopicRepository:
         return self._to_resolved_topic(document)
 
     def fetch_topic_by_id(self, topic_id: str) -> ResolvedTopic | None:
-        collection = self._get_collection(self.settings.mongo_topics_collection)
+        collection = self._get_collection(getattr(self.settings, "MONGO_TOPICS_COLLECTION", "topics"))
         try:
             object_id = ObjectId(topic_id)
         except Exception:
@@ -47,7 +44,7 @@ class TopicRepository:
         return self._to_resolved_topic(document)
 
     def mark_processed(self, topic_id: str | None, topic: str) -> None:
-        collection = self._get_collection(self.settings.mongo_topics_collection)
+        collection = self._get_collection(getattr(self.settings, "MONGO_TOPICS_COLLECTION", "topics"))
         update = {
             "$set": {
                 "status": "processed",
@@ -66,7 +63,7 @@ class TopicRepository:
         collection.update_one({"topic": topic}, update)
 
     def save_generation(self, payload: dict[str, Any]) -> str:
-        collection = self._get_collection(self.settings.mongo_output_collection)
+        collection = self._get_collection(self.settings.MONGO_OUTPUT_COLL)
         result = collection.insert_one(payload)
         return str(result.inserted_id)
 

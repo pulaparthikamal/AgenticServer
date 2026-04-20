@@ -5,10 +5,9 @@ from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
+from django.conf import settings
 
-from .schemas import ContentGenerationRequest, ResearchBundle, ResolvedTopic
-from .settings import ServiceSettings
-
+from api.schemas import ContentGenerationRequest, ResearchBundle, ResolvedTopic
 
 BLOCKED_DOMAINS = {
     "reddit.com",
@@ -21,10 +20,10 @@ BLOCKED_DOMAINS = {
 
 
 class ResearchCollector:
-    def __init__(self, settings: ServiceSettings) -> None:
-        self.settings = settings
+    def __init__(self, service_settings=None) -> None:
+        self.settings = service_settings or settings
         self._session = requests.Session()
-        self._session.headers.update({"User-Agent": settings.user_agent})
+        self._session.headers.update({"User-Agent": getattr(self.settings, "USER_AGENT", "Mozilla/5.0")})
 
     def build_bundle(
         self,
@@ -64,7 +63,7 @@ class ResearchCollector:
     def check_ollama(self) -> bool:
         try:
             response = self._session.get(
-                f"{self.settings.ollama_base_url.rstrip('/')}/api/tags",
+                f"{self.settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags",
                 timeout=10,
             )
             response.raise_for_status()
@@ -73,20 +72,20 @@ class ResearchCollector:
             return False
 
     def _search_google_cse(self, topic: str) -> list[str]:
-        api_key = self.settings.google_cse_api_key
-        cse_id = self.settings.google_cse_id
+        api_key = getattr(self.settings, "GOOGLE_CSE_API_KEY", None)
+        cse_id = getattr(self.settings, "GOOGLE_CSE_ID", None)
         if not api_key or not cse_id:
             return []
 
         query = quote_plus(topic)
         search_url = (
             "https://www.googleapis.com/customsearch/v1"
-            f"?q={query}&key={api_key}&cx={cse_id}&num={self.settings.max_search_results}"
+            f"?q={query}&key={api_key}&cx={cse_id}&num={getattr(self.settings, 'MAX_SEARCH_RESULTS', 5)}"
         )
         try:
             response = self._session.get(
                 search_url,
-                timeout=self.settings.request_timeout_seconds,
+                timeout=getattr(self.settings, 'REQUEST_TIMEOUT_SECONDS', 45),
             )
             response.raise_for_status()
             payload = response.json()
@@ -100,15 +99,15 @@ class ResearchCollector:
                 continue
             if link not in urls:
                 urls.append(link)
-        return urls[: self.settings.max_scrape_sources]
+        return urls[: getattr(self.settings, 'MAX_SCRAPE_SOURCES', 4)]
 
     def _scrape_urls(self, urls: list[str]) -> list[str]:
         scraped_blocks: list[str] = []
-        for url in urls[: self.settings.max_scrape_sources]:
+        for url in urls[: getattr(self.settings, 'MAX_SCRAPE_SOURCES', 4)]:
             try:
                 response = self._session.get(
                     url,
-                    timeout=self.settings.request_timeout_seconds,
+                    timeout=getattr(self.settings, 'REQUEST_TIMEOUT_SECONDS', 45),
                 )
                 response.raise_for_status()
             except requests.RequestException:
@@ -118,7 +117,7 @@ class ResearchCollector:
             if len(text_content.split()) < 80:
                 continue
 
-            text_content = text_content[: self.settings.max_chars_per_source]
+            text_content = text_content[: getattr(self.settings, 'MAX_CHARS_PER_SOURCE', 6000)]
             scraped_blocks.append(f"Source URL: {url}\n{text_content}")
         return scraped_blocks
 

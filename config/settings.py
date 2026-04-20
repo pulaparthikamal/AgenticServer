@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     'ninja',
     
     # Internal apps
-    'common.apps.CommonConfig',
     'agents.apps.AgentsConfig',
     'api.apps.ApiConfig',
 ]
@@ -141,3 +140,31 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = True # Change this for production
+
+# --- CrewAI & LLM Settings ---
+LLM_PROVIDER = os.getenv("CREWAI_CONTENT_LLM_PROVIDER", "ollama").strip().lower()
+LLM_MODEL = os.getenv("CREWAI_CONTENT_LLM_MODEL", "")
+OPENAI_API_KEY = os.getenv("CREWAI_CONTENT_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+OPENAI_BASE_URL = os.getenv("CREWAI_CONTENT_OPENAI_BASE_URL", None)
+OLLAMA_BASE_URL = os.getenv("CREWAI_CONTENT_OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("CREWAI_CONTENT_OLLAMA_MODEL", "ollama/llama3.1:8b")
+OLLAMA_TEMPERATURE = float(os.getenv("CREWAI_CONTENT_OLLAMA_TEMPERATURE", 0.4))
+OLLAMA_TIMEOUT = int(os.getenv("CREWAI_CONTENT_OLLAMA_TIMEOUT", 180))
+
+# Search & Research
+MAX_SEARCH_RESULTS = int(os.getenv("CREWAI_CONTENT_MAX_SEARCH_RESULTS", 5))
+MAX_SCRAPE_SOURCES = int(os.getenv("CREWAI_CONTENT_MAX_SCRAPE_SOURCES", 4))
+MAX_CHARS_PER_SOURCE = int(os.getenv("CREWAI_CONTENT_MAX_CHARS_PER_SOURCE", 6000))
+REQUEST_TIMEOUT_SECONDS = int(os.getenv("CREWAI_CONTENT_REQUEST_TIMEOUT", 45))
+USER_AGENT = os.getenv("CREWAI_CONTENT_USER_AGENT", "Mozilla/5.0")
+
+# Google CSE
+GOOGLE_CSE_API_KEY = os.getenv("GOOGLE_CSE_API_KEY")
+GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID")
+
+# MongoDB Fallback (If still used by research scripts)
+MONGO_URI = os.getenv("CREWAI_CONTENT_MONGO_URI")
+MONGO_DB_NAME = os.getenv("CREWAI_CONTENT_MONGO_DB")
+MONGO_OUTPUT_COLL = os.getenv("CREWAI_CONTENT_OUTPUT_COLLECTION", "generated_content_runs")
+SAVE_RESULT_DEFAULT = os.getenv("CREWAI_CONTENT_SAVE_RESULT", "True") == "True"
+MARK_TOPIC_PROCESSED_DEFAULT = os.getenv("CREWAI_CONTENT_MARK_TOPIC_PROCESSED", "True") == "True"

@@ -3,16 +3,16 @@ from typing import Any
 import yaml
 import os
 from pathlib import Path
+from django.conf import settings
 from crewai import Agent, Crew, LLM, Process, Task
-from ..settings import ServiceSettings
 
 class BaseCrew(ABC):
     """
     Abstract base class for all Agentic Crews.
     Provides shared LLM initialization and execution logic.
     """
-    def __init__(self, settings: ServiceSettings) -> None:
-        self.settings = settings
+    def __init__(self, service_settings=None) -> None:
+        # service_settings is kept for backward compat if called from legacy paths
         self.llm = self._build_llm()
         self.config_dir = Path(__file__).resolve().parent.parent / "config"
 
@@ -48,22 +48,22 @@ class BaseCrew(ABC):
         return crew.kickoff()
 
     def _build_llm(self) -> LLM:
-        provider = self.settings.llm_provider
+        provider = settings.LLM_PROVIDER
         if provider == "openai":
-            model = self.settings.llm_model or "gpt-4o-mini"
+            model = settings.LLM_MODEL or "gpt-4o-mini"
             kwargs = {
                 "model": model,
-                "temperature": self.settings.ollama_temperature,
+                "temperature": settings.OLLAMA_TEMPERATURE,
             }
-            if self.settings.openai_api_key:
-                kwargs["api_key"] = self.settings.openai_api_key
-            if self.settings.openai_base_url:
-                kwargs["base_url"] = self.settings.openai_base_url
+            if settings.OPENAI_API_KEY:
+                kwargs["api_key"] = settings.OPENAI_API_KEY
+            if settings.OPENAI_BASE_URL:
+                kwargs["base_url"] = settings.OPENAI_BASE_URL
             return LLM(**kwargs)
 
-        model = self.settings.llm_model or self.settings.ollama_model
+        model = settings.LLM_MODEL or settings.OLLAMA_MODEL
         return LLM(
             model=model,
-            base_url=self.settings.ollama_base_url,
-            temperature=self.settings.ollama_temperature,
+            base_url=settings.OLLAMA_BASE_URL,
+            temperature=settings.OLLAMA_TEMPERATURE,
         )

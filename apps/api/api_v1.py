@@ -2,36 +2,34 @@ from ninja import NinjaAPI, Schema
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
 from datetime import datetime, timezone
-from django.http import HttpRequest
+from django.conf import settings
 from agents.crewai.crew_service import ContentCrewService
-from agents.crewai.settings import load_settings
 from agents.crewai.repository import TopicRepository, ResolvedTopic
 from agents.crewai.research import ResearchCollector
-from agents.crewai.schemas import ContentGenerationRequest, ContentGenerationResponse, HealthResponse
+from .schemas import ContentGenerationRequest, ContentGenerationResponse, HealthResponse
 
 api = NinjaAPI(title="Agentic Server API", version="1.0.0")
 
-# Load existing logic
-settings = load_settings()
+# Load logic using Django settings
 repository = TopicRepository(settings)
 research_collector = ResearchCollector(settings)
-crew_service = ContentCrewService(settings)
+crew_service = ContentCrewService()
 
 @api.get("/health", response=HealthResponse)
 def health_check(request):
     llm_base_url = (
-        settings.openai_base_url
-        if settings.llm_provider == "openai"
-        else settings.ollama_base_url
+        settings.OPENAI_BASE_URL
+        if settings.LLM_PROVIDER == "openai"
+        else settings.OLLAMA_BASE_URL
     )
-    llm_model = settings.llm_model or (
-        "gpt-4o-mini" if settings.llm_provider == "openai" else settings.ollama_model
+    llm_model = settings.LLM_MODEL or (
+        "gpt-4o-mini" if settings.LLM_PROVIDER == "openai" else settings.OLLAMA_MODEL
     )
     return {
         "status": "ok",
         "service": "agentic-server-django",
-        "llm_provider": settings.llm_provider,
-        "ollama_reachable": research_collector.check_ollama() if settings.llm_provider == "ollama" else True,
+        "llm_provider": settings.LLM_PROVIDER,
+        "ollama_reachable": research_collector.check_ollama() if settings.LLM_PROVIDER == "ollama" else True,
         "llm_model": llm_model,
         "llm_base_url": llm_base_url,
         "mongo_configured": repository.enabled,
@@ -60,12 +58,12 @@ def generate_content(request, payload: ContentGenerationRequest):
     should_save = (
         payload.save_result
         if payload.save_result is not None
-        else settings.save_result_by_default
+        else settings.SAVE_RESULT_DEFAULT
     )
     should_mark_processed = (
         payload.mark_topic_processed
         if payload.mark_topic_processed is not None
-        else settings.mark_topic_processed_by_default
+        else settings.MARK_TOPIC_PROCESSED_DEFAULT
     )
 
     if should_save and repository.enabled:
