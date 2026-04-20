@@ -168,3 +168,38 @@ MONGO_DB_NAME = os.getenv("CREWAI_CONTENT_MONGO_DB")
 MONGO_OUTPUT_COLL = os.getenv("CREWAI_CONTENT_OUTPUT_COLLECTION", "generated_content_runs")
 SAVE_RESULT_DEFAULT = os.getenv("CREWAI_CONTENT_SAVE_RESULT", "True") == "True"
 MARK_TOPIC_PROCESSED_DEFAULT = os.getenv("CREWAI_CONTENT_MARK_TOPIC_PROCESSED", "True") == "True"
+
+# --- Logging Configuration ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps': {  # Logger for our internal apps
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

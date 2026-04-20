@@ -1,3 +1,4 @@
+import logging
 from ninja import NinjaAPI, Schema
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
@@ -8,6 +9,7 @@ from agents.crewai.repository import TopicRepository, ResolvedTopic
 from agents.crewai.research import ResearchCollector
 from .schemas import ContentGenerationRequest, ContentGenerationResponse, HealthResponse
 
+logger = logging.getLogger("apps.api")
 api = NinjaAPI(title="Agentic Server API", version="1.0.0")
 
 # Load logic using Django settings
@@ -38,12 +40,20 @@ def health_check(request):
 @api.post("/content/generate", response=ContentGenerationResponse)
 def generate_content(request, payload: ContentGenerationRequest):
     request_id = str(uuid4())
+    logger.info(f"[{request_id}] Received generation request: topic='{payload.topic}', crew='{payload.crew_type}'")
+    
     resolved_topic = _resolve_topic(payload)
+    logger.info(f"[{request_id}] Resolved topic to: {resolved_topic.topic}")
+    
     research_bundle = research_collector.build_bundle(payload, resolved_topic)
+    logger.info(f"[{request_id}] Research bundle built with {research_bundle.source_count} sources.")
 
     try:
+        logger.info(f"[{request_id}] Starting CrewAI execution...")
         crew_result = crew_service.run(payload, research_bundle)
+        logger.info(f"[{request_id}] CrewAI execution completed successfully.")
     except Exception as exc:
+        logger.error(f"[{request_id}] CrewAI execution failed: {exc}", exc_info=True)
         return api.create_response(request, {"detail": f"CrewAI execution failed: {exc}"}, status=502)
 
     parsed = crew_result.parsed_output
