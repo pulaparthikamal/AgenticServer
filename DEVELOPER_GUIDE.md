@@ -130,3 +130,19 @@ Always ensure your payload follows the industry-standard structure we've impleme
   "word_count": 500
 }
 ```
+
+---
+
+## 📊 5. Logging & Monitoring
+We have implemented **Professional Logging**. You can monitor the agents in real-time.
+
+### To see the "Thinking" process:
+Run this command in your terminal:
+```bash
+docker compose logs -f agent_server
+```
+
+### What to look for:
+- `INFO [uuid] Received generation request`: Confirms the API hit.
+- `INFO [uuid] Resolved topic`: Shows how the AI interpreted the request.
+- `ERROR [uuid] CrewAI execution failed`: Look for the full Python traceback here if something breaks.

@@ -86,8 +86,7 @@ This project is built to grow. Here is how to add more agents:
 ---
 
 ## 📂 Project Structure
-*   **`config/`**: Django system settings.
-*   **`apps/api/`**: API endpoints (Django Ninja).
-*   **`apps/agents/crewai/`**: The core multi-agent engine.
-*   **`apps/agents/crewai/config/`**: YAML agent/task definitions.
-*   **`legacy/`**: Your original unstructured code (for reference).
+*   **`config/`**: Django system settings & global configurations.
+*   **`apps/api/`**: API endpoints & request schemas (Django Ninja).
+*   **`apps/agents/crewai/`**: The core multi-agent engine (Crews, Tools, Logic).
+*   **`apps/agents/crewai/config/`**: YAML agent/task definitions for scaling.
