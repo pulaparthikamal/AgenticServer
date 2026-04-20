@@ -1,148 +1,97 @@
 # 🚀 Developer Guide: Scaling Your Agents
 
-This guide explains the project structure and provides step-by-step examples for adding new agents and automation workflows.
+This guide provides the technical knowledge needed to expand your fleet of agents and manage the project logic.
 
 ---
 
-## 📂 1. Key File Registry
+## 📂 1. The "Whose File is it Anyway?" Map (Visual)
 
-| File Path | Purpose |
-| :--- | :--- |
-| `apps/agents/crewai/crews/` | **Put new agent code here.** Any file added here is auto-discovered. |
-| `apps/agents/crewai/config/` | **YAML Configs.** Define agents and tasks without writing code. |
-| `apps/agents/crewai/tools/` | **Custom Tools.** Put Python scripts for agents to use (browser, database, etc). |
-| `apps/api/api_v1.py` | **API Layer.** Handles incoming requests and maps them to agents. |
-| `config/settings.py` | **Core Settings.** Django and environment variable configurations. |
-
----
-
-## 📝 Quick Checklist: Where to make changes?
-
-Depending on your goal, you only need to touch **one or two** specific files:
-
-### ✅ To add a standard agent (YAML):
-1.  **`apps/agents/crewai/config/agents.yaml`** (Add Role/Goal)
-2.  **`apps/agents/crewai/config/tasks.yaml`** (Add Task description)
-
-### ✅ To add a complex agent (Python):
-1.  **`apps/agents/crewai/crews/`** (Create a new `.py` file with `@register_crew`)
-
-### ✅ To give agents new powers:
-1.  **`apps/agents/crewai/tools/`** (Add your custom Python tool scripts)
+| Component                | Files                        | Purpose                                |
+| :----------------------- | :--------------------------- | :------------------------------------- |
+| **Simple Agent Scaling** | `apps/agents/crewai/config/` | YAML agent/task definitions (No-Code). |
+| **Complex Agent Logic**  | `apps/agents/crewai/crews/`  | Advanced Python logic Classes (Code).  |
+| **API Layer**            | `apps/api/schemas.py`        | JSON request/response formats.         |
+| **Observability**        | `apps/api/models.py`         | Generation history & audit trail.      |
+| **Brain Config**         | `config/settings.py`         | LLM providers, temperatures, & keys.   |
+| **Extra Powers**         | `apps/agents/crewai/tools/`  | Custom Python tools (Scrapers, DBs).   |
 
 ---
 
-## 🎨 2. Adding Agents: The EASY Way (YAML Config)
-Use this method if you want to quickly create an agent behavior by just writing plain text.
+## 📝 2. Quick Checklist: Where to make changes?
 
-### Step 1: Update `apps/agents/crewai/config/agents.yaml`
-Add your new agent definition:
+### ✅ To add a standard Research/Writer Agent:
+
+1.  Add the Role/Goal to **`apps/agents/crewai/config/agents.yaml`**.
+2.  Add the Task to **`apps/agents/crewai/config/tasks.yaml`**.
+3.  Request using `"crew_type": "dynamic"` in your API call.
+
+### ✅ To add a specialized Python-based Crew:
+
+1.  Create a new file in **`apps/agents/crewai/crews/`** (e.g. `market_crew.py`).
+2.  Use the `@register_crew("market")` decorator on your class.
+3.  The system finds it **automatically**—no other files need changing!
+
+---
+
+## 🎨 3. Example: Adding a "SEO Optimizer" Agent (YAML)
+
+**Step 1**: Edit `apps/agents/crewai/config/agents.yaml`:
+
 ```yaml
-seo_analyst:
-  role: >
-    SEO Strategy Expert
-  goal: >
-    Optimize the content for {topic} with high-ranking keywords.
-  backstory: >
-    You are a veteran SEO specialist. You ensure every piece of content 
-    is primed for Google search results.
+seo_agent:
+  role: SEO Specialist
+  goal: Research top 5 keywords for {topic}
+  backstory: You are an expert in Google search algorithms...
 ```
 
-### Step 2: Update `apps/agents/crewai/config/tasks.yaml`
-Define what this agent should actually do:
+**Step 2**: Edit `apps/agents/crewai/config/tasks.yaml`:
+
 ```yaml
-seo_task:
-  description: >
-    Review the draft for {topic} and add 5 relevant meta-tags.
-  expected_output: >
-    A list of 5 SEO-optimized keywords and a meta-description.
-  agent: seo_analyst
-```
-
-### Step 3: Trigger via API
-In your POST request to `http://localhost:8000/api/v1/content/generate`, use:
-```json
-{
-  "topic": "Blockchain",
-  "crew_type": "dynamic"
-}
+optimization_task:
+  description: Find keywords for {topic}
+  expected_output: List of 5 keywords
+  agent: seo_agent
 ```
 
 ---
 
-## 💻 3. Adding Agents: The CODING Way (Python)
-Use this method if you need custom logic, specific tools, or complex decision-making.
+## 💻 4. Example: Adding a "Finance" Crew (Python)
 
-### Step 1: Create `apps/agents/crewai/crews/research_crew.py`
-Create a new file and paste this template:
+Create `apps/agents/crewai/crews/finance_crew.py`:
 
 ```python
-from crewai import Agent, Task
 from .base import BaseCrew
 from .registry import register_crew
+from crewai import Agent, Task
 
-@register_crew("deep_research")  # <--- THIS REGISTERS IT AUTOMATICALLY
-class ResearchCrew(BaseCrew):
+@register_crew("finance")  # Registers the 'finance' crew_type
+class FinanceCrew(BaseCrew):
     def setup_agents(self, inputs):
-        return [
-            Agent(
-                role="Deep Researcher",
-                goal="Find 10 obscure facts about {topic}",
-                backstory="You are a data detective...",
-                llm=self.llm
-            )
-        ]
+        return [Agent(role="Analyst", goal="Check stock for {topic}", llm=self.llm)]
 
     def setup_tasks(self, agents, inputs):
-        return [
-            Task(
-                description="Scan the web for {topic} insights.",
-                expected_output="Top 10 list.",
-                agent=agents[0]
-            )
-        ]
-```
-
-### Step 2: Trigger via API
-Simply change the `crew_type` in your request:
-```json
-{
-  "topic": "Quantum Computing",
-  "crew_type": "deep_research"
-}
+        return [Task(description="Fetch prices", agent=agents[0], expected_output="Price table")]
 ```
 
 ---
 
-## 🔗 4. Testing with n8n / Postman
-Always ensure your payload follows the industry-standard structure we've implemented:
+## 🔗 5. Testing your API
 
-**Endpoint**: `POST http://<SERVER_IP>:8000/api/v1/content/generate`
+**Endpoint**: `POST http://localhost:8000/api/v1/content/generate`
 
-**Body**:
+**Payload**:
+
 ```json
 {
-  "topic": "Your Topic",
-  "crew_type": "content", 
-  "tone": "Professional",
-  "audience": "CEOs",
-  "brand_voice": "Bold",
+  "topic": "Bitcoin",
+  "crew_type": "dynamic",
+  "tone": "Academic",
   "word_count": 500
 }
 ```
 
 ---
 
-## 📊 5. Logging & Monitoring
-We have implemented **Professional Logging**. You can monitor the agents in real-time.
+## 📊 6. Observability
 
-### To see the "Thinking" process:
-Run this command in your terminal:
-```bash
-docker compose logs -f agent_server
-```
-
-### What to look for:
-- `INFO [uuid] Received generation request`: Confirms the API hit.
-- `INFO [uuid] Resolved topic`: Shows how the AI interpreted the request.
-- `ERROR [uuid] CrewAI execution failed`: Look for the full Python traceback here if something breaks.
+Use `docker compose logs -f` to track every step of the agent's workflow. Every request is tagged with a unique **ID** (e.g., `[92164c64]`) that you can find in the Django Admin for audit later.

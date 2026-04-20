@@ -1,92 +1,82 @@
 # 🔗 Agentic Server (Django + CrewAI)
 
-This project is a professional, containerized backend for orchestrating **CrewAI** agents. It follows industry standards for modularity and scalability.
+A professional, industry-standard backend for orchestrating **CrewAI** multi-agent systems. Built for scalability, observability, and high-performance automation.
 
 ---
 
-## 🛠 PHASE 1: Initial Setup (One-Time Only)
-Follow these steps strictly when setting up the project for the first time.
+## 🚀 PHASE 1: Execution (Choose your path)
 
-### Step 1: Prepare Environment Variables
-Configure your credentials for LLMs (OpenAI or Ollama).
-1.  Locate the `.env` file in the root directory.
-2.  Ensure it contains your keys:
-    ```bash
-    # For OpenAI
-    OPENAI_API_KEY=sk-xxxx
-    
-    # For Ollama (Local)
-    OLLAMA_BASE_URL=http://host.docker.internal:11434
-    ```
+### Option A: Using Docker (Professional/Recommended)
 
-### Step 2: Build the Docker Image
-This installs Python, Django, CrewAI, and all required tools.
-1.  Run the build command:
-    ```bash
-    docker compose build --no-cache
-    ```
+Best for production-like consistency and ease of deployment.
 
-### Step 3: Initialize the Database
-This creates the internal structure needed for logs and metadata.
-1.  Run migrations:
-    ```bash
-    docker compose run --rm agent_server python manage.py migrate
-    ```
+```bash
+# 1. Build and Start
+docker compose up -d --build
 
----
+# 2. Setup Database (First time only)
+docker compose run --rm agent_server python manage.py migrate
 
-## 🚀 PHASE 2: Normal Operation (Daily Use)
-Follow these steps every time you want to start working.
+# 3. Watch Agents Thinking
+docker compose logs -f agent_server
+```
 
-### Step 1: Start the Server
-1.  Run the server in the background:
-    ```bash
-    docker compose up -d
-    ```
+### Option B: Running Locally (Non-Docker)
 
-### Step 2: Verify it's Running
-1.  Check the container status:
-    ```bash
-    docker ps
-    ```
-2.  Open your browser and visit:
-    - **Health Check**: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-    - **API Documentation**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
+Best for fast iteration and local experimentation.
 
-### Step 3: Watch the Agents Think
-1.  To see the real-time research and writing process of your agents:
-    ```bash
-    docker compose logs -f agent_server
-    ```
+```bash
+# 1. Environment Configuration
+# Create .env file with your OPENAI_API_KEY and OLLAMA_BASE_URL
+
+# 2. Install Dependencies
+pip install -r requirements.txt
+
+# 3. Initialize Database
+python manage.py migrate
+
+# 4. Start Server
+python manage.py runserver
+```
 
 ---
 
-## 🛑 PHASE 3: Stopping the Project
-1.  When you are finished, stop and remove the containers:
-    ```bash
-    docker compose down
-    ```
+## 📊 PHASE 2: Monitoring & Audit
 
----
+### 🕒 Generation History
 
-## 📈 PHASE 4: Adding "Many Agents" (Scalability)
-This project is built to grow. Here is how to add more agents:
+Every time an agent runs, the result is saved internally. You can view these in the **Django Admin**:
 
-### Step 1: Easy Config (No Code)
-1.  Navigate to `apps/agents/crewai/config/`.
-2.  Add a new agent in `agents.yaml`.
-3.  Add a new task in `tasks.yaml`.
-4.  Call the API with `"crew_type": "dynamic"`.
-
-### Step 2: Custom Logic (Developer)
-1.  Add a new `.py` file into `apps/agents/crewai/crews/`.
-2.  Decorate your class with `@register_crew("your_name")`.
-3.  The API registers it automatically upon start.
-
----
+1.  **Create Admin User**: `docker compose run --rm agent_server python manage.py createsuperuser`
+2.  **Login**: [http://localhost:8000/admin/](http://localhost:8000/admin/)
+3.  **Browse History**: View topics, content, execution time, and LLM metadata in the "Generation Histories" section.
 
 ## 📂 Project Structure
-*   **`config/`**: Django system settings & global configurations.
-*   **`apps/api/`**: API endpoints & request schemas (Django Ninja).
-*   **`apps/agents/crewai/`**: The core multi-agent engine (Crews, Tools, Logic).
-*   **`apps/agents/crewai/config/`**: YAML agent/task definitions for scaling.
+
+- **`config/`**: Django system settings & global configurations.
+- **`apps/api/`**: API endpoints & request schemas (Django Ninja).
+- **`apps/agents/crewai/`**: The core multi-agent engine (Crews, Tools, Logic).
+- **`apps/agents/crewai/config/`**: YAML agent/task definitions for scaling.
+
+---
+
+### 📁 Detailed Folder Structure
+
+```text
+AgenticServer/
+├── config/                 # ⚙️ Django Core
+│   ├── settings.py         # Unified Config
+│   └── urls.py             # Main Routing
+├── apps/
+│   ├── api/                # 🌐 Web Layer
+│   │   ├── api_v1.py       # Endpoints
+│   │   ├── schemas.py      # Data Models
+│   │   └── models.py       # History DB
+│   └── agents/             # 🧠 Brain Layer
+│       └── crewai/
+│           ├── crews/      # Agent Classes
+│           ├── config/     # YAML Definitions
+│           └── tools/      # Custom Powers
+├── Dockerfile              # 🐳 Packaging
+└── docker-compose.yml      # 📦 Orchestration
+```
